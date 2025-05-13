@@ -2,55 +2,48 @@ package com.org.fundatec.sistemabancario.controller;
 
 import com.org.fundatec.sistemabancario.dto.ContaDTO;
 import com.org.fundatec.sistemabancario.dto.OperacaoBancariaDTO;
+import com.org.fundatec.sistemabancario.model.Conta;
 import com.org.fundatec.sistemabancario.service.ContaService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.net.URI;
 
 @RestController
-@RequestMapping("/contas")
+@RequestMapping(path = "/contas", produces = MediaType.APPLICATION_JSON_VALUE)
 public class ContaController {
 
     @Autowired
-    private ContaService contaService;
+    private ContaService service;
 
-    @PostMapping
-    public ResponseEntity<ContaDTO> criar(@RequestBody @Valid ContaDTO contaDTO) {
-        ContaDTO contaSalva = contaService.salvar(contaDTO);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(contaSalva.getId())
-                .toUri();
-        return ResponseEntity.created(location).body(contaSalva);
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Conta> criar(@RequestBody @Valid ContaDTO contaDTO) {
+        Conta contaSalva = service.salvar(contaDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(contaSalva);
     }
 
-    @GetMapping("/{numero}")
-    public ResponseEntity<ContaDTO> buscarPorNumero(@PathVariable Integer numero) {
-        return ResponseEntity.ok(contaService.buscarPorNumero(numero));
+    @GetMapping(value = "/{numero}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Conta> buscarPorNumero(@PathVariable Integer numero) {
+        return ResponseEntity.ok(service.buscarPorNumero(numero));
     }
 
-    @Transactional
-    @PostMapping("/depositos")
-    public ResponseEntity<Void> depositar(@RequestBody @Valid OperacaoBancariaDTO operacaoDTO) {
-        contaService.depositar(operacaoDTO);
-        return ResponseEntity.noContent().build();
+    @PostMapping(value = "/depositar", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> depositar(@RequestBody @Valid OperacaoBancariaDTO dto) {
+        service.depositar(dto.getNumeroConta(), dto.getValor());
+        return ResponseEntity.ok().build();
     }
 
-    @Transactional
-    @PostMapping("/saques")
-    public ResponseEntity<Void> sacar(@RequestBody @Valid OperacaoBancariaDTO operacaoDTO) {
-        contaService.sacar(operacaoDTO);
-        return ResponseEntity.noContent().build();
+    @PostMapping(value = "/sacar", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> sacar(@RequestBody @Valid OperacaoBancariaDTO dto) {
+        service.sacar(dto.getNumeroConta(), dto.getValor());
+        return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        contaService.deletar(id);
+        service.deletar(id);
         return ResponseEntity.noContent().build();
     }
 }

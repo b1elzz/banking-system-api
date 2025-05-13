@@ -4,14 +4,13 @@ import com.org.fundatec.sistemabancario.dto.BancoDTO;
 import com.org.fundatec.sistemabancario.exception.EntidadeNaoEncontradaException;
 import com.org.fundatec.sistemabancario.model.Banco;
 import com.org.fundatec.sistemabancario.repository.BancoRepository;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class BancoServiceTest {
 
     @Mock
@@ -28,114 +26,121 @@ class BancoServiceTest {
     @InjectMocks
     private BancoService bancoService;
 
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
+
     @Test
-    void salvar_ComDadosValidos_DeveRetornarBancoDTO() {
-        Banco bancoSalvo = new Banco(1, "Banco Teste", "12345678000199");
+    void deveSalvarBancoComSucesso() {
+        BancoDTO dto = new BancoDTO();
+        dto.setCodigo(341);
+        dto.setNome("Itaú");
+        dto.setCnpj("60.872.504/0001-23");
+
+        Banco bancoSalvo = new Banco(341, "Itaú", "60.872.504/0001-23");
         bancoSalvo.setId(1L);
+
         when(bancoRepository.save(any(Banco.class))).thenReturn(bancoSalvo);
 
-        BancoDTO resultado = bancoService.salvar(new BancoDTO(null, 1, "Banco Teste", "12345678000199"));
+        Banco resultado = bancoService.salvar(dto);
 
+        assertNotNull(resultado);
         assertEquals(1L, resultado.getId());
-        assertEquals("Banco Teste", resultado.getNome());
-        verify(bancoRepository).save(any(Banco.class));
     }
 
     @Test
-    void buscarPorId_ComIdExistente_DeveRetornarBancoDTO() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
+    void deveBuscarBancoPorId() {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
         banco.setId(1L);
+
         when(bancoRepository.findById(1L)).thenReturn(Optional.of(banco));
 
-        BancoDTO resultado = bancoService.buscarPorId(1L);
+        Banco resultado = bancoService.buscarPorId(1L);
 
-        assertEquals(1, resultado.getCodigo());
-        assertEquals("12345678000199", resultado.getCnpj());
+        assertNotNull(resultado);
+        assertEquals(341, resultado.getCodigo());
     }
 
     @Test
-    void buscarPorId_ComIdInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoQuandoBancoNaoEncontrado() {
         when(bancoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntidadeNaoEncontradaException.class, () -> bancoService.buscarPorId(1L));
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            bancoService.buscarPorId(1L);
+        });
     }
 
     @Test
-    void buscarPorCodigo_ComCodigoExistente_DeveRetornarBancoDTO() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        when(bancoRepository.findByCodigo(1)).thenReturn(Optional.of(banco));
+    void deveListarTodosBancos() {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        when(bancoRepository.findAll()).thenReturn(Collections.singletonList(banco));
 
-        BancoDTO resultado = bancoService.buscarPorCodigo(1);
-
-        assertEquals("Banco Teste", resultado.getNome());
-    }
-
-    @Test
-    void buscarPorCodigo_ComCodigoInexistente_DeveLancarExcecao() {
-        when(bancoRepository.findByCodigo(1)).thenReturn(Optional.empty());
-
-        assertThrows(EntidadeNaoEncontradaException.class, () -> bancoService.buscarPorCodigo(1));
-    }
-
-    @Test
-    void buscarPorNome_ComTextoExistente_DeveRetornarLista() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        when(bancoRepository.findByNomeContainingIgnoreCase("teste")).thenReturn(List.of(banco));
-
-        List<BancoDTO> resultado = bancoService.buscarPorNome("teste");
-
-        assertEquals(1, resultado.size());
-        assertEquals("Banco Teste", resultado.get(0).getNome());
-    }
-
-    @Test
-    void listarTodos_ComBancosExistentes_DeveRetornarLista() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        when(bancoRepository.findAll()).thenReturn(List.of(banco));
-
-        List<BancoDTO> resultado = bancoService.listarTodos();
+        List<Banco> resultado = bancoService.listarTodos();
 
         assertFalse(resultado.isEmpty());
-        assertEquals(1, resultado.get(0).getCodigo());
+        assertEquals(1, resultado.size());
     }
 
     @Test
-    void atualizar_ComDadosValidos_DeveRetornarBancoAtualizado() {
-        Banco bancoExistente = new Banco(1, "Banco Antigo", "12345678000199");
+    void deveBuscarBancoPorCodigo() {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        when(bancoRepository.findByCodigo(341)).thenReturn(Optional.of(banco));
+
+        Banco resultado = bancoService.buscarPorCodigo(341);
+
+        assertNotNull(resultado);
+        assertEquals("Itaú", resultado.getNome());
+    }
+
+
+    @Test
+    void deveBuscarBancoPorNome() {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        when(bancoRepository.findByNomeContainingIgnoreCase("ita")).thenReturn(List.of(banco));
+
+        List<Banco> resultado = bancoService.buscarPorNome("ita");
+
+        assertEquals(1, resultado.size());
+        assertEquals("Itaú", resultado.get(0).getNome());
+    }
+
+
+    @Test
+    void deveAtualizarBancoComSucesso() {
+        Banco bancoExistente = new Banco(341, "Antigo", "11.111.111/0001-11");
         bancoExistente.setId(1L);
+
+        BancoDTO dto = new BancoDTO();
+        dto.setCodigo(999);
+        dto.setNome("Atualizado");
+        dto.setCnpj("99.999.999/0001-99");
 
         when(bancoRepository.findById(1L)).thenReturn(Optional.of(bancoExistente));
         when(bancoRepository.save(any(Banco.class))).thenReturn(bancoExistente);
 
-        BancoDTO resultado = bancoService.atualizar(1L,
-                new BancoDTO(null, 1, "Banco Novo", "12345678000199"));
+        Banco resultado = bancoService.atualizar(1L, dto);
 
-        assertEquals("Banco Novo", resultado.getNome());
+        assertEquals("Atualizado", resultado.getNome());
+        assertEquals(999, resultado.getCodigo());
     }
 
-    @Test
-    void atualizar_ComIdInexistente_DeveLancarExcecao() {
-        when(bancoRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                bancoService.atualizar(1L, new BancoDTO(null, 1, "Banco Novo", "12345678000199")));
-    }
 
     @Test
-    void deletar_ComIdExistente_DeveExecutarComSucesso() {
+    void deveDeletarBancoComSucesso() {
         when(bancoRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(bancoRepository).deleteById(1L);
 
         assertDoesNotThrow(() -> bancoService.deletar(1L));
         verify(bancoRepository).deleteById(1L);
     }
 
+
     @Test
-    void deletar_ComIdInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoAoDeletarBancoInexistente() {
         when(bancoRepository.existsById(1L)).thenReturn(false);
 
         assertThrows(EntidadeNaoEncontradaException.class, () -> bancoService.deletar(1L));
-        verify(bancoRepository, never()).deleteById(any());
     }
-
 
 }

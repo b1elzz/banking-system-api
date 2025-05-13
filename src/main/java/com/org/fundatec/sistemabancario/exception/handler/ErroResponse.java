@@ -1,6 +1,7 @@
 package com.org.fundatec.sistemabancario.exception.handler;
 
 public class ErroResponse {
+
     private Integer codigo;
     private String mensagem;
 
@@ -16,7 +17,15 @@ public class ErroResponse {
         return codigo;
     }
 
+    public void setCodigo(Integer codigo) {
+        this.codigo = codigo;
+    }
+
     public String getMensagem() {
         return mensagem;
+    }
+
+    public void setMensagem(String mensagem) {
+        this.mensagem = mensagem;
     }
 }

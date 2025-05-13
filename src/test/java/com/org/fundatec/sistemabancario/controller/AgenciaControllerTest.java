@@ -2,141 +2,147 @@ package com.org.fundatec.sistemabancario.controller;
 
 import com.org.fundatec.sistemabancario.dto.AgenciaDTO;
 import com.org.fundatec.sistemabancario.exception.EntidadeNaoEncontradaException;
+import com.org.fundatec.sistemabancario.model.Agencia;
 import com.org.fundatec.sistemabancario.service.AgenciaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-class AgenciaControllerTest {
+@WebMvcTest(AgenciaController.class)
+public class AgenciaControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockBean
     private AgenciaService agenciaService;
-
-    @InjectMocks
-    private AgenciaController agenciaController;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(agenciaController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
-    }
-
-    @RestControllerAdvice
-    static class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-        @ExceptionHandler(EntidadeNaoEncontradaException.class)
-        public ResponseEntity<Object> handleEntidadeNaoEncontrada(EntidadeNaoEncontradaException ex) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
     @Test
-    void criar_ComDadosValidos_DeveRetornar201() throws Exception {
+    void deveCadastrarAgenciaComSucesso() throws Exception {
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(1234);
+        dto.setNome("Centro");
+        dto.setBancoId(1L);
 
-        AgenciaDTO request = new AgenciaDTO(null, 1234, "Agência Central", 1L);
-        AgenciaDTO response = new AgenciaDTO(1L, 1234, "Agência Central", 1L);
+        Agencia agenciaSalva = new Agencia(1234, "Centro", null);
+        agenciaSalva.setId(1L);
 
-        when(agenciaService.salvar(any(AgenciaDTO.class))).thenReturn(response);
+        Mockito.when(agenciaService.salvar(any(AgenciaDTO.class))).thenReturn(agenciaSalva);
 
         mockMvc.perform(post("/agencias")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
-                .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.numero").value(1234));
+                .andExpect(jsonPath("$.id").value(1L));
     }
 
     @Test
-    void buscarPorId_ComIdExistente_DeveRetornar200() throws Exception {
+    void deveRetornarErroQuandoNumeroNulo() throws Exception {
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(null);
+        dto.setNome("Centro");
+        dto.setBancoId(1L);
 
-        AgenciaDTO response = new AgenciaDTO(1L, 1234, "Agência Central", 1L);
-        when(agenciaService.buscarPorId(1L)).thenReturn(response);
+        mockMvc.perform(post("/agencias")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value(400))
+                .andExpect(jsonPath("$.mensagem").value("numero - Número é obrigatório;"));
+
+    }
+
+    @Test
+    void deveBuscarAgenciaPorId() throws Exception {
+        Agencia agencia = new Agencia(1234, "Centro", null);
+        agencia.setId(1L);
+
+        Mockito.when(agenciaService.buscarPorId(1L)).thenReturn(agencia);
 
         mockMvc.perform(get("/agencias/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.numero").value(1234));
     }
 
     @Test
-    void buscarPorId_ComIdInexistente_DeveRetornar404() throws Exception {
-
-        when(agenciaService.buscarPorId(1L)).thenThrow(new EntidadeNaoEncontradaException("Agência não encontrada"));
-
+    void deveRetornarNotFoundParaIdInexistente() throws Exception {
+        Mockito.when(agenciaService.buscarPorId(1L))
+                .thenThrow(new EntidadeNaoEncontradaException("Agência não encontrada"));
 
         mockMvc.perform(get("/agencias/1"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value(404))
+                .andExpect(jsonPath("$.mensagem").value("Agência não encontrada"));
     }
 
     @Test
-    void buscarPorNumero_ComNumeroExistente_DeveRetornar200() throws Exception {
+    void deveBuscarAgenciaPorNumero() throws Exception {
+        Agencia agencia = new Agencia(1234, "Centro", null);
+        Mockito.when(agenciaService.buscarPorNumero(1234)).thenReturn(agencia);
 
-        AgenciaDTO response = new AgenciaDTO(1L, 1234, "Agência Central", 1L);
-        when(agenciaService.buscarPorNumero(1234)).thenReturn(response);
-
-
-        mockMvc.perform(get("/agencias/por-numero/1234"))
+        mockMvc.perform(get("/agencias/numero/1234"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.numero").value(1234));
+                .andExpect(jsonPath("$.nome").value("Centro"));
     }
 
     @Test
-    void buscarPorBanco_ComBancoExistente_DeveRetornar200() throws Exception {
+    void deveListarAgenciasPorBanco() throws Exception {
+        Agencia agencia = new Agencia(1234, "Centro", null);
+        Mockito.when(agenciaService.buscarPorBanco(1L)).thenReturn(List.of(agencia));
 
-        AgenciaDTO agencia = new AgenciaDTO(1L, 1234, "Agência Central", 1L);
-        when(agenciaService.buscarPorBanco(1L)).thenReturn(List.of(agencia));
-
-        mockMvc.perform(get("/agencias/por-banco").param("bancoId", "1"))
+        mockMvc.perform(get("/agencias/banco/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nome").value("Agência Central"));
+                .andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
-    void atualizar_ComDadosValidos_DeveRetornar200() throws Exception {
+    void deveAtualizarAgencia() throws Exception {
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(9999);
+        dto.setNome("Atualizada");
+        dto.setBancoId(1L);
 
-        AgenciaDTO request = new AgenciaDTO(null, 1234, "Agência Atualizada", 1L);
-        AgenciaDTO response = new AgenciaDTO(1L, 1234, "Agência Atualizada", 1L);
+        Agencia agenciaAtualizada = new Agencia(9999, "Atualizada", null);
+        agenciaAtualizada.setId(1L);
 
-        when(agenciaService.atualizar(eq(1L), any(AgenciaDTO.class))).thenReturn(response);
-
+        Mockito.when(agenciaService.atualizar(Mockito.eq(1L), any(AgenciaDTO.class))).thenReturn(agenciaAtualizada);
 
         mockMvc.perform(put("/agencias/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nome").value("Agência Atualizada"));
+                .andExpect(jsonPath("$.nome").value("Atualizada"));
     }
 
     @Test
-    void deletar_ComIdExistente_DeveRetornar204() throws Exception {
-
-        doNothing().when(agenciaService).deletar(1L);
+    void deveDeletarAgenciaComSucesso() throws Exception {
+        Mockito.doNothing().when(agenciaService).deletar(1L);
 
         mockMvc.perform(delete("/agencias/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deveRetornarNotFoundAoDeletarAgenciaInexistente() throws Exception {
+        Mockito.doThrow(new EntidadeNaoEncontradaException("Agência não encontrada"))
+                .when(agenciaService).deletar(1L);
+
+        mockMvc.perform(delete("/agencias/1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value(404))
+                .andExpect(jsonPath("$.mensagem").value("Agência não encontrada"));
     }
 }

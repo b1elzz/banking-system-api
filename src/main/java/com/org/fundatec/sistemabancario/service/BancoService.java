@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class BancoService {
@@ -18,34 +17,42 @@ public class BancoService {
     private BancoRepository bancoRepository;
 
     @Transactional
-    public BancoDTO salvar(BancoDTO bancoDTO) {
-        Banco banco = new Banco(bancoDTO.getCodigo(), bancoDTO.getNome(), bancoDTO.getCnpj());
-        Banco bancoSalvo = bancoRepository.save(banco);
-        return converterParaDTO(bancoSalvo);
+    public Banco salvar(BancoDTO bancoDTO) {
+        Banco banco = new Banco();
+        banco.setCodigo(bancoDTO.getCodigo());
+        banco.setNome(bancoDTO.getNome());
+        banco.setCnpj(bancoDTO.getCnpj());
+        return bancoRepository.save(banco);
     }
 
-    public BancoDTO buscarPorId(Long id) {
-        Banco banco = bancoRepository.findById(id)
+    public Banco buscarPorId(Long id) {
+        return bancoRepository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Banco não encontrado com ID: " + id));
-        return converterParaDTO(banco);
     }
 
-    public BancoDTO buscarPorCodigo(Integer codigo) {
-        Banco banco = bancoRepository.findByCodigo(codigo)
+    public Banco buscarPorCodigo(Integer codigo) {
+        return bancoRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Banco não encontrado com código: " + codigo));
-        return converterParaDTO(banco);
     }
 
-    public List<BancoDTO> buscarPorNome(String nome) {
-        return bancoRepository.findByNomeContainingIgnoreCase(nome).stream()
-                .map(this::converterParaDTO)
-                .collect(Collectors.toList());
+    public List<Banco> buscarPorNome(String nome) {
+        return bancoRepository.findByNomeContainingIgnoreCase(nome);
     }
 
-    public List<BancoDTO> listarTodos() {
-        return bancoRepository.findAll().stream()
-                .map(this::converterParaDTO)
-                .collect(Collectors.toList());
+    public List<Banco> listarTodos() {
+        return bancoRepository.findAll();
+    }
+
+    @Transactional
+    public Banco atualizar(Long id, BancoDTO bancoDTO) {
+        Banco bancoExistente = bancoRepository.findById(id)
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Banco não encontrado com ID: " + id));
+
+        bancoExistente.setCodigo(bancoDTO.getCodigo());
+        bancoExistente.setNome(bancoDTO.getNome());
+        bancoExistente.setCnpj(bancoDTO.getCnpj());
+
+        return bancoRepository.save(bancoExistente);
     }
 
     @Transactional
@@ -54,21 +61,5 @@ public class BancoService {
             throw new EntidadeNaoEncontradaException("Banco não encontrado com ID: " + id);
         }
         bancoRepository.deleteById(id);
-    }
-
-    @Transactional
-    public BancoDTO atualizar(Long id, BancoDTO bancoDTO) {
-        Banco banco = bancoRepository.findById(id)
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Banco não encontrado com ID: " + id));
-
-        banco.setCodigo(bancoDTO.getCodigo());
-        banco.setNome(bancoDTO.getNome());
-        banco.setCnpj(bancoDTO.getCnpj());
-
-        return converterParaDTO(bancoRepository.save(banco));
-    }
-
-    private BancoDTO converterParaDTO(Banco banco) {
-        return new BancoDTO(banco.getId(), banco.getCodigo(), banco.getNome(), banco.getCnpj());
     }
 }

@@ -2,38 +2,31 @@ package com.org.fundatec.sistemabancario.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-
 import java.math.BigDecimal;
 
 public class OperacaoBancariaDTO {
-    @NotNull
-    @Positive
+
+    @NotNull(message = "Valor é obrigatório")
+    @Positive(message = "Valor deve ser positivo")
     private BigDecimal valor;
 
-    @NotNull
-    private Long contaId;
+    @NotNull(message = "Número da conta é obrigatório")
+    private Integer numeroConta;
 
-    public OperacaoBancariaDTO() {
-    }
-
-    public OperacaoBancariaDTO(BigDecimal valor, Long contaId) {
-        this.valor = valor;
-        this.contaId = contaId;
-    }
 
     public BigDecimal getValor() {
         return valor;
+    }
+
+    public Integer getNumeroConta() {
+        return numeroConta;
     }
 
     public void setValor(BigDecimal valor) {
         this.valor = valor;
     }
 
-    public Long getContaId() {
-        return contaId;
-    }
-
-    public void setContaId(Long contaId) {
-        this.contaId = contaId;
+    public void setNumeroConta(Integer numeroConta) {
+        this.numeroConta = numeroConta;
     }
 }

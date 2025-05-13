@@ -5,67 +5,46 @@ import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 public class ContaDTO {
-    private Long id;
 
-    @NotNull
+    @NotNull(message = "Número é obrigatório")
     private Integer numero;
 
-    @PositiveOrZero
-    private BigDecimal saldo;
+    @PositiveOrZero(message = "Saldo não pode ser negativo")
+    private BigDecimal saldo = BigDecimal.ZERO;
 
-    @NotNull
+    @NotNull(message = "ID do cliente é obrigatório")
     private Long clienteId;
 
-    @NotNull
+    @NotNull(message = "ID da agência é obrigatório")
     private Long agenciaId;
 
-    public ContaDTO() {
-    }
-
-    public ContaDTO(Long id, Integer numero, BigDecimal saldo, Long clienteId, Long agenciaId) {
-        this.id = id;
-        this.numero = numero;
-        this.saldo = saldo;
-        this.clienteId = clienteId;
-        this.agenciaId = agenciaId;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
 
     public Integer getNumero() {
         return numero;
-    }
-
-    public void setNumero(Integer numero) {
-        this.numero = numero;
     }
 
     public BigDecimal getSaldo() {
         return saldo;
     }
 
-    public void setSaldo(BigDecimal saldo) {
-        this.saldo = saldo;
-    }
-
     public Long getClienteId() {
         return clienteId;
-    }
-
-    public void setClienteId(Long clienteId) {
-        this.clienteId = clienteId;
     }
 
     public Long getAgenciaId() {
         return agenciaId;
     }
+    public void setNumero(Integer numero) {
+        this.numero = numero;
+    }
 
+    public void setSaldo(BigDecimal saldo) {
+        this.saldo = saldo;
+    }
+
+    public void setClienteId(Long clienteId) {
+        this.clienteId = clienteId;
+    }
     public void setAgenciaId(Long agenciaId) {
         this.agenciaId = agenciaId;
     }

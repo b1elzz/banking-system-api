@@ -1,14 +1,9 @@
 package com.org.fundatec.sistemabancario.service;
 
 import com.org.fundatec.sistemabancario.dto.ContaDTO;
-import com.org.fundatec.sistemabancario.dto.OperacaoBancariaDTO;
 import com.org.fundatec.sistemabancario.exception.EntidadeNaoEncontradaException;
 import com.org.fundatec.sistemabancario.exception.OperacaoInvalidaException;
-import com.org.fundatec.sistemabancario.model.Agencia;
-import com.org.fundatec.sistemabancario.model.Cliente;
 import com.org.fundatec.sistemabancario.model.Conta;
-import com.org.fundatec.sistemabancario.repository.AgenciaRepository;
-import com.org.fundatec.sistemabancario.repository.ClienteRepository;
 import com.org.fundatec.sistemabancario.repository.ContaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,28 +18,43 @@ public class ContaService {
     private ContaRepository contaRepository;
 
     @Autowired
-    private ClienteRepository clienteRepository;
+    private ClienteService clienteService;
 
     @Autowired
-    private AgenciaRepository agenciaRepository;
+    private AgenciaService agenciaService;
 
     @Transactional
-    public ContaDTO salvar(ContaDTO contaDTO) {
-        Cliente cliente = clienteRepository.findById(contaDTO.getClienteId())
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado com ID: " + contaDTO.getClienteId()));
-
-        Agencia agencia = agenciaRepository.findById(contaDTO.getAgenciaId())
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Agência não encontrada com ID: " + contaDTO.getAgenciaId()));
-
-        Conta conta = new Conta(contaDTO.getNumero(), cliente, agencia);
-        Conta contaSalva = contaRepository.save(conta);
-        return converterParaDTO(contaSalva);
+    public Conta salvar(ContaDTO contaDTO) {
+        Conta conta = new Conta();
+        conta.setNumero(contaDTO.getNumero());
+        conta.setSaldo(contaDTO.getSaldo());
+        conta.setCliente(clienteService.buscarPorId(contaDTO.getClienteId()));
+        conta.setAgencia(agenciaService.buscarPorId(contaDTO.getAgenciaId()));
+        return contaRepository.save(conta);
     }
 
-    public ContaDTO buscarPorNumero(Integer numero) {
-        Conta conta = contaRepository.findByNumero(numero)
+    public Conta buscarPorNumero(Integer numero) {
+        return contaRepository.findByNumero(numero)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Conta não encontrada com número: " + numero));
-        return converterParaDTO(conta);
+    }
+
+    @Transactional
+    public void depositar(Integer numero, BigDecimal valor) {
+        Conta conta = buscarPorNumero(numero);
+        conta.setSaldo(conta.getSaldo().add(valor));
+        contaRepository.save(conta);
+    }
+
+    @Transactional
+    public void sacar(Integer numero, BigDecimal valor) {
+        Conta conta = buscarPorNumero(numero);
+
+        if (conta.getSaldo().compareTo(valor) < 0) {
+            throw new OperacaoInvalidaException("Saldo insuficiente para saque");
+        }
+
+        conta.setSaldo(conta.getSaldo().subtract(valor));
+        contaRepository.save(conta);
     }
 
     @Transactional
@@ -53,45 +63,5 @@ public class ContaService {
             throw new EntidadeNaoEncontradaException("Conta não encontrada com ID: " + id);
         }
         contaRepository.deleteById(id);
-    }
-
-    @Transactional
-    public void depositar(OperacaoBancariaDTO operacaoDTO) {
-        if (operacaoDTO.getValor().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OperacaoInvalidaException("Valor do depósito deve ser positivo");
-        }
-
-        Conta conta = contaRepository.findById(operacaoDTO.getContaId())
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Conta não encontrada com ID: " + operacaoDTO.getContaId()));
-
-        conta.setSaldo(conta.getSaldo().add(operacaoDTO.getValor()));
-        contaRepository.save(conta);
-    }
-
-    @Transactional
-    public void sacar(OperacaoBancariaDTO operacaoDTO) {
-        if (operacaoDTO.getValor().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new OperacaoInvalidaException("Valor do saque deve ser positivo");
-        }
-
-        Conta conta = contaRepository.findById(operacaoDTO.getContaId())
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Conta não encontrada com ID: " + operacaoDTO.getContaId()));
-
-        BigDecimal novoSaldo = conta.getSaldo().subtract(operacaoDTO.getValor());
-        if (novoSaldo.compareTo(BigDecimal.ZERO) < 0) {
-            throw new OperacaoInvalidaException("Saldo insuficiente para realizar o saque");
-        }
-
-        conta.setSaldo(novoSaldo);
-        contaRepository.save(conta);
-    }
-
-    private ContaDTO converterParaDTO(Conta conta) {
-        return new ContaDTO(
-                conta.getId(),
-                conta.getNumero(),
-                conta.getSaldo(),
-                conta.getCliente().getId(),
-                conta.getAgencia().getId());
     }
 }

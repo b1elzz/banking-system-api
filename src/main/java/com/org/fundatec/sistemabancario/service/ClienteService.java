@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ClienteService {
@@ -18,28 +17,36 @@ public class ClienteService {
     private ClienteRepository clienteRepository;
 
     @Transactional
-    public ClienteDTO salvar(ClienteDTO clienteDTO) {
-        Cliente cliente = new Cliente(clienteDTO.getCpf(), clienteDTO.getNome());
-        Cliente clienteSalvo = clienteRepository.save(cliente);
-        return converterParaDTO(clienteSalvo);
+    public Cliente salvar(ClienteDTO clienteDTO) {
+        Cliente cliente = new Cliente();
+        cliente.setCpf(clienteDTO.getCpf());
+        cliente.setNome(clienteDTO.getNome());
+        return clienteRepository.save(cliente);
     }
 
-    public ClienteDTO buscarPorId(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
+    public Cliente buscarPorId(Long id) {
+        return clienteRepository.findById(id)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado com ID: " + id));
-        return converterParaDTO(cliente);
     }
 
-    public ClienteDTO buscarPorCpf(String cpf) {
-        Cliente cliente = clienteRepository.findByCpf(cpf)
+    public Cliente buscarPorCpf(String cpf) {
+        return clienteRepository.findByCpf(cpf)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado com CPF: " + cpf));
-        return converterParaDTO(cliente);
     }
 
-    public List<ClienteDTO> buscarPorNome(String nome) {
-        return clienteRepository.findByNomeContainingIgnoreCase(nome).stream()
-                .map(this::converterParaDTO)
-                .collect(Collectors.toList());
+    public List<Cliente> buscarPorNome(String nome) {
+        return clienteRepository.findByNomeContainingIgnoreCase(nome);
+    }
+
+    @Transactional
+    public Cliente atualizar(Long id, ClienteDTO clienteDTO) {
+        Cliente clienteExistente = clienteRepository.findById(id)
+                .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado com ID: " + id));
+
+        clienteExistente.setCpf(clienteDTO.getCpf());
+        clienteExistente.setNome(clienteDTO.getNome());
+
+        return clienteRepository.save(clienteExistente);
     }
 
     @Transactional
@@ -48,20 +55,5 @@ public class ClienteService {
             throw new EntidadeNaoEncontradaException("Cliente não encontrado com ID: " + id);
         }
         clienteRepository.deleteById(id);
-    }
-
-    @Transactional
-    public ClienteDTO atualizar(Long id, ClienteDTO clienteDTO) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new EntidadeNaoEncontradaException("Cliente não encontrado com ID: " + id));
-
-        cliente.setCpf(clienteDTO.getCpf());
-        cliente.setNome(clienteDTO.getNome());
-
-        return converterParaDTO(clienteRepository.save(cliente));
-    }
-
-    private ClienteDTO converterParaDTO(Cliente cliente) {
-        return new ClienteDTO(cliente.getId(), cliente.getCpf(), cliente.getNome());
     }
 }

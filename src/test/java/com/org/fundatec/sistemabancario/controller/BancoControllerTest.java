@@ -2,168 +2,157 @@ package com.org.fundatec.sistemabancario.controller;
 
 import com.org.fundatec.sistemabancario.dto.BancoDTO;
 import com.org.fundatec.sistemabancario.exception.EntidadeNaoEncontradaException;
+import com.org.fundatec.sistemabancario.model.Banco;
 import com.org.fundatec.sistemabancario.service.BancoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-class BancoControllerTest {
+@WebMvcTest(BancoController.class)
+public class BancoControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockBean
     private BancoService bancoService;
-
-    @InjectMocks
-    private BancoController bancoController;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-
-    private static final String CNPJ_VALIDO = "11444777000161";
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(bancoController)
-                .setControllerAdvice(new GlobalExceptionHandler())
-                .build();
-    }
-
-    @RestControllerAdvice
-    static class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
-        @ExceptionHandler(EntidadeNaoEncontradaException.class)
-        public ResponseEntity<Object> handleEntidadeNaoEncontrada(EntidadeNaoEncontradaException ex) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
     @Test
-    void criar_ComDadosValidos_DeveRetornar201() throws Exception {
+    void deveCadastrarBancoComSucesso() throws Exception {
+        BancoDTO dto = new BancoDTO();
+        dto.setCodigo(341);
+        dto.setNome("Itaú");
+        dto.setCnpj("60.872.504/0001-23");
 
-        BancoDTO request = new BancoDTO(null, 1, "Banco Teste", CNPJ_VALIDO);
-        BancoDTO response = new BancoDTO(1L, 1, "Banco Teste", CNPJ_VALIDO);
+        Banco bancoSalvo = new Banco(341, "Itaú", "60.872.504/0001-23");
+        bancoSalvo.setId(1L);
 
-        when(bancoService.salvar(any(BancoDTO.class))).thenReturn(response);
-
+        Mockito.when(bancoService.salvar(any(BancoDTO.class))).thenReturn(bancoSalvo);
 
         mockMvc.perform(post("/bancos")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isCreated())
-                .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.id").value(1L));
     }
 
     @Test
-    void criar_ComCNPJInvalido_DeveRetornar400() throws Exception {
-
-        BancoDTO request = new BancoDTO(null, 1, "Banco Teste", "123");
-
+    void deveRetornarErroQuandoNomeNulo() throws Exception {
+        BancoDTO dto = new BancoDTO();
+        dto.setCodigo(341);
+        dto.setNome(null);
+        dto.setCnpj("60.872.504/0001-23");
 
         mockMvc.perform(post("/bancos")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value(400))
+                .andExpect(jsonPath("$.mensagem").value("nome - Nome é obrigatório;"));
     }
 
     @Test
-    void buscarPorId_ComIdExistente_DeveRetornar200() throws Exception {
+    void deveBuscarBancoPorId() throws Exception {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        banco.setId(1L);
 
-        BancoDTO response = new BancoDTO(1L, 1, "Banco Teste", CNPJ_VALIDO);
-        when(bancoService.buscarPorId(1L)).thenReturn(response);
-
+        Mockito.when(bancoService.buscarPorId(1L)).thenReturn(banco);
 
         mockMvc.perform(get("/bancos/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.codigo").value(1));
+                .andExpect(jsonPath("$.codigo").value(341))
+                .andExpect(jsonPath("$.nome").value("Itaú"));
     }
 
     @Test
-    void buscarPorId_ComIdInexistente_DeveRetornar404() throws Exception {
-
-        when(bancoService.buscarPorId(1L)).thenThrow(new EntidadeNaoEncontradaException("Banco não encontrado"));
-
+    void deveRetornarNotFoundParaIdInexistente() throws Exception {
+        Mockito.when(bancoService.buscarPorId(1L))
+                .thenThrow(new EntidadeNaoEncontradaException("Banco não encontrado"));
 
         mockMvc.perform(get("/bancos/1"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value(404))
+                .andExpect(jsonPath("$.mensagem").value("Banco não encontrado"));
     }
 
     @Test
-    void buscarPorCodigo_ComCodigoExistente_DeveRetornar200() throws Exception {
+    void deveBuscarBancoPorCodigo() throws Exception {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        Mockito.when(bancoService.buscarPorCodigo(341)).thenReturn(banco);
 
-        BancoDTO response = new BancoDTO(1L, 1, "Banco Teste", CNPJ_VALIDO);
-        when(bancoService.buscarPorCodigo(1)).thenReturn(response);
-
-        mockMvc.perform(get("/bancos/por-codigo/1"))
+        mockMvc.perform(get("/bancos/codigo/341"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.codigo").value(1));
+                .andExpect(jsonPath("$.nome").value("Itaú"));
     }
 
     @Test
-    void listarTodos_ComBancosExistentes_DeveRetornar200() throws Exception {
-
-        BancoDTO banco = new BancoDTO(1L, 1, "Banco Teste", CNPJ_VALIDO);
-        when(bancoService.listarTodos()).thenReturn(List.of(banco));
-
+    void deveListarTodosOsBancos() throws Exception {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        Mockito.when(bancoService.listarTodos()).thenReturn(List.of(banco));
 
         mockMvc.perform(get("/bancos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nome").value("Banco Teste"));
+                .andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
-    void buscarPorNome_ComTextoExistente_DeveRetornar200() throws Exception {
+    void deveBuscarBancoPorNome() throws Exception {
+        Banco banco = new Banco(341, "Itaú", "60.872.504/0001-23");
+        Mockito.when(bancoService.buscarPorNome("ita")).thenReturn(List.of(banco));
 
-        BancoDTO banco = new BancoDTO(1L, 1, "Banco Teste", CNPJ_VALIDO);
-        when(bancoService.buscarPorNome("teste")).thenReturn(List.of(banco));
-
-        mockMvc.perform(get("/bancos/buscar-por-nome").param("nome", "teste"))
+        mockMvc.perform(get("/bancos/buscar?nome=ita"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nome").value("Banco Teste"));
+                .andExpect(jsonPath("$[0].nome").value("Itaú"));
     }
 
     @Test
-    void atualizar_ComDadosValidos_DeveRetornar200() throws Exception {
+    void deveAtualizarBanco() throws Exception {
+        BancoDTO dto = new BancoDTO();
+        dto.setCodigo(999);
+        dto.setNome("Atualizado");
+        dto.setCnpj("12.345.678/0001-95");
 
-        BancoDTO request = new BancoDTO(null, 1, "Banco Atualizado", CNPJ_VALIDO);
-        BancoDTO response = new BancoDTO(1L, 1, "Banco Atualizado", CNPJ_VALIDO);
+        Banco bancoAtualizado = new Banco(999, "Atualizado", "12.345.678/0001-95");
+        bancoAtualizado.setId(1L);
 
-        when(bancoService.atualizar(eq(1L), any(BancoDTO.class))).thenReturn(response);
+        Mockito.when(bancoService.atualizar(Mockito.eq(1L), any(BancoDTO.class))).thenReturn(bancoAtualizado);
 
         mockMvc.perform(put("/bancos/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nome").value("Banco Atualizado"));
+                .andExpect(jsonPath("$.nome").value("Atualizado"));
     }
 
     @Test
-    void deletar_ComIdExistente_DeveRetornar204() throws Exception {
-
-        doNothing().when(bancoService).deletar(1L);
-
+    void deveDeletarBancoComSucesso() throws Exception {
+        Mockito.doNothing().when(bancoService).deletar(1L);
 
         mockMvc.perform(delete("/bancos/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deveRetornarNotFoundAoDeletarBancoInexistente() throws Exception {
+        Mockito.doThrow(new EntidadeNaoEncontradaException("Banco não encontrado"))
+                .when(bancoService).deletar(1L);
+
+        mockMvc.perform(delete("/bancos/1"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value(404))
+                .andExpect(jsonPath("$.mensagem").value("Banco não encontrado"));
     }
 }

@@ -6,12 +6,13 @@ import com.org.fundatec.sistemabancario.model.Agencia;
 import com.org.fundatec.sistemabancario.model.Banco;
 import com.org.fundatec.sistemabancario.repository.AgenciaRepository;
 import com.org.fundatec.sistemabancario.repository.BancoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class AgenciaServiceTest {
 
     @Mock
@@ -31,139 +31,221 @@ class AgenciaServiceTest {
     @InjectMocks
     private AgenciaService agenciaService;
 
-    @Test
-    void salvar_ComDadosValidos_DeveRetornarAgenciaDTO() {
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+    }
 
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        banco.setId(1L);
-        Agencia agenciaSalva = new Agencia(1234, "Agência Centro", banco);
+    @Test
+    void deveSalvarAgenciaComSucesso() {
+
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(1234);
+        dto.setNome("Centro");
+        dto.setBancoId(1L);
+
+        Banco banco = new Banco(1, "Banco Teste", "00.000.000/0001-00");
+        Agencia agenciaSalva = new Agencia(1234, "Centro", banco);
         agenciaSalva.setId(1L);
 
         when(bancoRepository.findById(1L)).thenReturn(Optional.of(banco));
         when(agenciaRepository.save(any(Agencia.class))).thenReturn(agenciaSalva);
 
 
-        AgenciaDTO resultado = agenciaService.salvar(
-                new AgenciaDTO(null, 1234, "Agência Centro", 1L));
+        Agencia resultado = agenciaService.salvar(dto);
 
+
+        assertNotNull(resultado);
         assertEquals(1L, resultado.getId());
         assertEquals(1234, resultado.getNumero());
-        verify(agenciaRepository).save(any(Agencia.class));
+        assertEquals("Centro", resultado.getNome());
+        assertEquals(banco, resultado.getBanco());
     }
 
     @Test
-    void salvar_ComBancoInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoAoSalvarAgenciaComBancoInexistente() {
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(1234);
+        dto.setNome("Centro");
+        dto.setBancoId(1L);
+
         when(bancoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                agenciaService.salvar(new AgenciaDTO(null, 1234, "Agência Centro", 1L)));
+
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.salvar(dto);
+        });
     }
 
     @Test
-    void buscarPorId_ComIdExistente_DeveRetornarAgenciaDTO() {
+    void deveBuscarAgenciaPorId() {
 
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        banco.setId(1L);
-
-        Agencia agencia = new Agencia(1234, "Agência Centro", banco);
+        Agencia agencia = new Agencia(1234, "Centro", null);
         agencia.setId(1L);
 
         when(agenciaRepository.findById(1L)).thenReturn(Optional.of(agencia));
 
 
-        AgenciaDTO resultado = agenciaService.buscarPorId(1L);
+        Agencia resultado = agenciaService.buscarPorId(1L);
 
 
-        assertEquals(1L, resultado.getId()); // Agora vai passar
-        assertEquals("Agência Centro", resultado.getNome());
-        assertEquals(1L, resultado.getBancoId());
+        assertNotNull(resultado);
+        assertEquals(1L, resultado.getId());
+        assertEquals(1234, resultado.getNumero());
+        assertEquals("Centro", resultado.getNome());
     }
 
     @Test
-    void buscarPorId_ComIdInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoQuandoAgenciaNaoEncontradaPorId() {
+
         when(agenciaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                agenciaService.buscarPorId(1L));
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.buscarPorId(1L);
+        });
     }
 
     @Test
-    void buscarPorNumero_ComNumeroExistente_DeveRetornarAgenciaDTO() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        Agencia agencia = new Agencia(1234, "Agência Centro", banco);
+    void deveBuscarAgenciaPorNumero() {
 
+        Agencia agencia = new Agencia(1234, "Centro", null);
         when(agenciaRepository.findByNumero(1234)).thenReturn(Optional.of(agencia));
 
-        AgenciaDTO resultado = agenciaService.buscarPorNumero(1234);
 
+        Agencia resultado = agenciaService.buscarPorNumero(1234);
+
+
+        assertNotNull(resultado);
         assertEquals(1234, resultado.getNumero());
+        assertEquals("Centro", resultado.getNome());
     }
 
     @Test
-    void buscarPorNumero_ComNumeroInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoQuandoAgenciaNaoEncontradaPorNumero() {
+
         when(agenciaRepository.findByNumero(1234)).thenReturn(Optional.empty());
 
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                agenciaService.buscarPorNumero(1234));
+
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.buscarPorNumero(1234);
+        });
     }
 
     @Test
-    void buscarPorBanco_ComBancoExistente_DeveRetornarLista() {
-        Banco banco = new Banco(1, "Banco Teste", "12345678000199");
-        Agencia agencia = new Agencia(1234, "Agência Centro", banco);
+    void deveListarAgenciasPorBanco() {
 
+        Agencia agencia = new Agencia(1234, "Centro", null);
+        when(bancoRepository.existsById(1L)).thenReturn(true);
         when(agenciaRepository.findByBancoId(1L)).thenReturn(List.of(agencia));
 
-        List<AgenciaDTO> resultado = agenciaService.buscarPorBanco(1L);
+
+        List<Agencia> resultado = agenciaService.buscarPorBanco(1L);
+
 
         assertFalse(resultado.isEmpty());
-        assertEquals("Agência Centro", resultado.get(0).getNome());
+        assertEquals(1, resultado.size());
+        assertEquals(1234, resultado.get(0).getNumero());
     }
 
     @Test
-    void atualizar_ComDadosValidos_DeveRetornarAgenciaAtualizada() {
+    void deveLancarExcecaoAoListarAgenciasDeBancoInexistente() {
 
-        Banco bancoExistente = new Banco(1, "Banco Teste", "12345678000199");
-        bancoExistente.setId(1L);
+        when(bancoRepository.existsById(1L)).thenReturn(false);
 
-        Agencia agenciaExistente = new Agencia(1234, "Agência Antiga", bancoExistente);
+
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.buscarPorBanco(1L);
+        });
+    }
+
+    @Test
+    void deveAtualizarAgenciaComSucesso() {
+
+        Agencia agenciaExistente = new Agencia(1234, "Antiga", null);
         agenciaExistente.setId(1L);
 
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(9999);
+        dto.setNome("Atualizada");
+        dto.setBancoId(1L);
+
+        Banco banco = new Banco(1, "Banco Teste", "00.000.000/0001-00");
+
         when(agenciaRepository.findById(1L)).thenReturn(Optional.of(agenciaExistente));
-        when(bancoRepository.findById(1L)).thenReturn(Optional.of(bancoExistente));
+        when(bancoRepository.findById(1L)).thenReturn(Optional.of(banco));
         when(agenciaRepository.save(any(Agencia.class))).thenReturn(agenciaExistente);
 
 
-        AgenciaDTO resultado = agenciaService.atualizar(1L,
-                new AgenciaDTO(null, 5678, "Agência Nova", 1L));
+        Agencia resultado = agenciaService.atualizar(1L, dto);
 
 
-        assertEquals("Agência Nova", resultado.getNome());
-        assertEquals(5678, resultado.getNumero());
+        assertEquals("Atualizada", resultado.getNome());
+        assertEquals(9999, resultado.getNumero());
+        assertEquals(banco, resultado.getBanco());
     }
 
     @Test
-    void atualizar_ComIdInexistente_DeveLancarExcecao() {
+    void deveLancarExcecaoAoAtualizarAgenciaInexistente() {
+
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(9999);
+        dto.setNome("Atualizada");
+        dto.setBancoId(1L);
+
         when(agenciaRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                agenciaService.atualizar(1L, new AgenciaDTO(null, 1234, "Agência Centro", 1L)));
+
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.atualizar(1L, dto);
+        });
     }
 
     @Test
-    void deletar_ComIdExistente_DeveExecutarComSucesso() {
+    void deveLancarExcecaoAoAtualizarComBancoInexistente() {
+
+        Agencia agenciaExistente = new Agencia(1234, "Antiga", null);
+        agenciaExistente.setId(1L);
+
+        AgenciaDTO dto = new AgenciaDTO();
+        dto.setNumero(9999);
+        dto.setNome("Atualizada");
+        dto.setBancoId(1L);
+
+        when(agenciaRepository.findById(1L)).thenReturn(Optional.of(agenciaExistente));
+        when(bancoRepository.findById(1L)).thenReturn(Optional.empty());
+
+
+        assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            agenciaService.atualizar(1L, dto);
+        });
+    }
+
+    @Test
+    void deveDeletarAgenciaComSucesso() {
+
         when(agenciaRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(agenciaRepository).deleteById(1L);
+
 
         assertDoesNotThrow(() -> agenciaService.deletar(1L));
         verify(agenciaRepository).deleteById(1L);
     }
 
     @Test
-    void deletar_ComIdInexistente_DeveLancarExcecao() {
-        when(agenciaRepository.existsById(1L)).thenReturn(false);
+    void deveLancarExcecaoAoDeletarAgenciaInexistente() {
 
-        assertThrows(EntidadeNaoEncontradaException.class, () ->
-                agenciaService.deletar(1L));
-        verify(agenciaRepository, never()).deleteById(any());
+        when(agenciaRepository.existsById(1L)).thenReturn(false);
+        assertThrows(EntidadeNaoEncontradaException.class, () -> agenciaService.deletar(1L));
     }
+
+    @Test
+    void deveRetornarListaVaziaSeBancoNaoTemAgencias() {
+        when(bancoRepository.existsById(1L)).thenReturn(true);
+        when(agenciaRepository.findByBancoId(1L)).thenReturn(Collections.emptyList());
+
+        List<Agencia> resultado = agenciaService.buscarPorBanco(1L);
+
+        assertTrue(resultado.isEmpty());
+    }
+
 }
